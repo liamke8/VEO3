@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YT Shorts Automation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>YT Shorts Automation</h1>
+    </header>
+    <main>
+        <div class="container">
+            <h2>Fetch Videos</h2>
+            <form action="{{ url_for('fetch_videos_route') }}" method="post">
+                <input type="text" name="query" placeholder="Enter a search term (e.g., 'nature')">
+                <button type="submit">Fetch Videos</button>
+            </form>
+
+            {% if videos %}
+            <h2>Downloaded Videos</h2>
+            <div class="video-grid">
+                {% for video_filename in videos %}
+                <div class="video-item">
+                    <video width="320" height="240" controls>
+                        <source src="{{ url_for('video_file', filename=video_filename) }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <p>{{ video_filename }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </main>
+    <footer>
+        <p>&copy; 2025 Your Company</p>
+    </footer>
+</body>
+</html>
