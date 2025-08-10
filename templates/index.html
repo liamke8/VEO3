@@ -12,6 +12,14 @@
     </header>
     <main>
         <div class="container">
+            <div class="auth-status">
+                {% if is_authenticated %}
+                    <p>Connected to YouTube. <a href="{{ url_for('logout') }}">Logout</a></p>
+                {% else %}
+                    <a href="{{ url_for('authorize') }}" class="button">Connect to YouTube</a>
+                {% endif %}
+            </div>
+
             <h2>Fetch Videos</h2>
             <form action="{{ url_for('fetch_videos_route') }}" method="post">
                 <input type="text" name="query" placeholder="Enter a search term (e.g., 'nature')">
@@ -28,6 +36,13 @@
                         Your browser does not support the video tag.
                     </video>
                     <p>{{ video_filename }}</p>
+                    {% if is_authenticated %}
+                        {% if video_filename in upload_status %}
+                            <a href="https://www.youtube.com/watch?v={{ upload_status[video_filename] }}" target="_blank" class="button-uploaded">View on YouTube</a>
+                        {% else %}
+                            <a href="{{ url_for('upload_form', filename=video_filename) }}" class="button">Post to YouTube</a>
+                        {% endif %}
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>

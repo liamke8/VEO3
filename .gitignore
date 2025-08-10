@@ -1,0 +1,20 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Flask
+instance/
+
+# Virtual environment
+.venv
+venv/
+env/
+
+# Uploaded content
+videos/
+upload_status.json

@@ -25,6 +25,29 @@ main {
     border-radius: 5px;
 }
 
+.auth-status {
+    margin-bottom: 1rem;
+    text-align: right;
+}
+
+.button {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: #007bff;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 5px;
+}
+
+.button-uploaded {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: #28a745;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 5px;
+}
+
 .video-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
