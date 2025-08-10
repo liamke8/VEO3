@@ -108,7 +108,8 @@ def authorize():
     flow = get_google_auth_flow()
     authorization_url, state = flow.authorization_url(
         access_type='offline',
-        include_granted_scopes='true'
+        include_granted_scopes='true',
+        prompt='consent'
     )
     session['state'] = state
     return redirect(authorization_url)
