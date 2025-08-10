@@ -15,24 +15,38 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "supersecretkey")
 
+import shutil
+import uuid
+
 # Configuration
 app.config['VIDEO_FOLDER'] = 'videos'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['PEXELS_API_KEY'] = os.environ.get('PEXELS_API_KEY')
-app.config['PEXELS_API_URL'] = 'https://api.pexels.com/videos/search'
+# app.config['PEXELS_API_KEY'] = os.environ.get('PEXELS_API_KEY') # No longer needed
+# app.config['PEXELS_API_URL'] = 'https://api.pexels.com/videos/search' # No longer needed
 app.config['GOOGLE_CLIENT_ID'] = os.environ.get('GOOGLE_CLIENT_ID')
 app.config['GOOGLE_CLIENT_SECRET'] = os.environ.get('GOOGLE_CLIENT_SECRET')
+app.config['VEO_API_KEY'] = os.environ.get('VEO_API_KEY') # Placeholder for Veo API Key
 
 db = SQLAlchemy(app)
 
-# Database Model
+# Database Models
+class Account(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    credentials_json = db.Column(db.Text, nullable=False)
+    videos = db.relationship('Video', backref='account', lazy=True)
+
+    def __repr__(self):
+        return f"Account('{self.name}')"
+
 class Video(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(200), unique=True, nullable=False)
-    pexels_id = db.Column(db.String(200), nullable=True)
+    generation_prompt = db.Column(db.Text, nullable=True)
     youtube_video_id = db.Column(db.String(200), nullable=True)
-    status = db.Column(db.String(50), nullable=False, default='downloaded') # e.g., downloaded, uploaded
+    status = db.Column(db.String(50), nullable=False, default='generated') # e.g., generated, uploaded
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=True) # Can be nullable if we have videos not associated with an account
 
     def __repr__(self):
         return f"Video('{self.filename}', '{self.status}')"
@@ -62,25 +76,32 @@ def get_google_auth_flow():
     flow.redirect_uri = url_for('oauth2callback', _external=True)
     return flow
 
-def fetch_videos(query='nature', per_page=5):
-    headers = {
-        'Authorization': app.config['PEXELS_API_KEY']
-    }
-    params = {
-        'query': query,
-        'per_page': per_page
-    }
-    response = requests.get(app.config['PEXELS_API_URL'], headers=headers, params=params)
-    if response.status_code == 200:
-        return response.json().get('videos', [])
-    return []
+def generate_video_from_prompt(prompt):
+    """
+    Placeholder function for AI video generation.
+    In a real implementation, this would call the Google Veo API.
+    For now, it just copies a sample video to a new unique filename.
+    """
+    print(f"Generating video for prompt: '{prompt}'...")
+    # Simulate API call delay
+    import time
+    time.sleep(3)
+
+    source_video_path = 'assets/sample_video.mp4'
+    new_filename = f"generated_{uuid.uuid4()}.mp4"
+    destination_path = os.path.join(app.config['VIDEO_FOLDER'], new_filename)
+
+    shutil.copy(source_video_path, destination_path)
+
+    print(f"Video generated and saved to {destination_path}")
+    return new_filename
+
 
 @app.route('/')
 def index():
-    credentials = session.get('credentials')
-    is_authenticated = True if credentials else False
+    accounts = Account.query.all()
     videos = Video.query.all()
-    return render_template('index.html', videos=videos, is_authenticated=is_authenticated)
+    return render_template('index.html', videos=videos, accounts=accounts)
 
 @app.route('/authorize')
 def authorize():
@@ -94,54 +115,60 @@ def authorize():
 
 @app.route('/oauth2callback')
 def oauth2callback():
-    state = session['state']
+    state = session.pop('state', None)
+    if not state or state != request.args.get('state'):
+        return 'State mismatch. Please try again.', 400
+
     flow = get_google_auth_flow()
     flow.fetch_token(authorization_response=request.url)
 
     credentials = flow.credentials
-    session['credentials'] = {
-        'token': credentials.token,
-        'refresh_token': credentials.refresh_token,
-        'token_uri': credentials.token_uri,
-        'client_id': credentials.client_id,
-        'client_secret': credentials.client_secret,
-        'scopes': credentials.scopes
-    }
 
-    return redirect(url_for('index'))
+    # Get user's channel info to use as account name
+    youtube = googleapiclient.discovery.build(
+        'youtube', 'v3', credentials=credentials)
+    response = youtube.channels().list(part='snippet', mine=True).execute()
+    channel_title = response['items'][0]['snippet']['title']
+    account_name = channel_title or 'Unnamed Account'
 
-@app.route('/logout')
-def logout():
-    session.pop('credentials', None)
-    return redirect(url_for('index'))
-
-@app.route('/fetch_videos', methods=['POST'])
-def fetch_videos_route():
-    query = request.form.get('query', 'nature')
-    videos_data = fetch_videos(query=query)
-    for video_data in videos_data:
-        video_id = video_data['id']
-        video_filename = f"{video_id}.mp4"
-
-        # Check if video already exists in DB
-        existing_video = Video.query.filter_by(filename=video_filename).first()
-        if existing_video:
-            continue
-
-        video_url = video_data['video_files'][0]['link']
-        video_path = os.path.join(app.config['VIDEO_FOLDER'], video_filename)
-
-        if not os.path.exists(video_path):
-            with requests.get(video_url, stream=True) as r:
-                r.raise_for_status()
-                with open(video_path, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
-
-        new_video = Video(filename=video_filename, pexels_id=str(video_id))
-        db.session.add(new_video)
-
+    # Store credentials in the database
+    new_account = Account(
+        name=account_name,
+        credentials_json=credentials.to_json()
+    )
+    db.session.add(new_account)
     db.session.commit()
+
+    return redirect(url_for('index'))
+
+@app.route('/delete_account/<int:account_id>', methods=['POST'])
+def delete_account(account_id):
+    account = Account.query.get_or_404(account_id)
+    # Optional: Also delete associated videos or handle them as needed
+    # Video.query.filter_by(account_id=account.id).delete()
+    db.session.delete(account)
+    db.session.commit()
+    return redirect(url_for('index'))
+
+@app.route('/ideation')
+def ideation():
+    return render_template('ideation.html')
+
+@app.route('/generate_video', methods=['POST'])
+def generate_video():
+    prompt = request.form.get('prompt')
+    if not prompt:
+        return "No prompt provided.", 400
+
+    new_filename = generate_video_from_prompt(prompt)
+
+    new_video = Video(
+        filename=new_filename,
+        generation_prompt=prompt
+    )
+    db.session.add(new_video)
+    db.session.commit()
+
     return redirect(url_for('index'))
 
 @app.route('/videos/<filename>')
@@ -150,18 +177,22 @@ def video_file(filename):
 
 @app.route('/upload/<filename>')
 def upload_form(filename):
-    if 'credentials' not in session:
+    accounts = Account.query.all()
+    if not accounts:
         return redirect(url_for('authorize'))
-    return render_template('upload.html', filename=filename)
+    return render_template('upload.html', filename=filename, accounts=accounts)
 
 @app.route('/upload_video/<filename>', methods=['POST'])
 def upload_video(filename):
-    if 'credentials' not in session:
-        return redirect(url_for('authorize'))
+    account_id = request.form.get('account_id')
+    if not account_id:
+        return "No account selected.", 400
 
+    account = Account.query.get_or_404(account_id)
     video = Video.query.filter_by(filename=filename).first_or_404()
 
-    credentials = Credentials(**session['credentials'])
+    credentials = Credentials.from_authorized_user_info(json.loads(account.credentials_json))
+
     youtube = googleapiclient.discovery.build(
         'youtube', 'v3', credentials=credentials)
 
@@ -195,6 +226,7 @@ def upload_video(filename):
 
     video.youtube_video_id = response.get('id')
     video.status = 'uploaded'
+    video.account_id = account.id
     db.session.commit()
 
     print(f"Upload successful! Video ID: {video.youtube_video_id}")
@@ -263,19 +295,32 @@ def get_youtube_analytics(credentials, video_ids):
 
 @app.route('/dashboard')
 def dashboard():
-    if 'credentials' not in session:
-        return redirect(url_for('authorize'))
+    accounts = Account.query.all()
+    if not accounts:
+        return render_template('dashboard.html', accounts=accounts, analytics_data=None)
+    # Default to showing the first account's dashboard
+    return redirect(url_for('dashboard_for_account', account_id=accounts[0].id))
 
-    credentials = Credentials(**session['credentials'])
+@app.route('/dashboard/<int:account_id>')
+def dashboard_for_account(account_id):
+    accounts = Account.query.all()
+    target_account = Account.query.get_or_404(account_id)
+    credentials = Credentials.from_authorized_user_info(json.loads(target_account.credentials_json))
 
-    uploaded_videos = Video.query.filter(Video.youtube_video_id.isnot(None)).all()
+    uploaded_videos = Video.query.filter_by(account_id=target_account.id).filter(Video.youtube_video_id.isnot(None)).all()
     video_ids = [video.youtube_video_id for video in uploaded_videos]
 
     analytics_data = {}
     if video_ids:
-        analytics_data = get_youtube_analytics(credentials, video_ids)
+        try:
+            analytics_data = get_youtube_analytics(credentials, video_ids)
+        except Exception as e:
+            # Handle cases where token might be expired or invalid
+            print(f"Error fetching analytics for account {target_account.name}: {e}")
+            return f"Error fetching analytics for account {target_account.name}. Please try reconnecting the account.", 500
 
-    return render_template('dashboard.html', analytics_data=analytics_data)
+
+    return render_template('dashboard.html', analytics_data=analytics_data, accounts=accounts, current_account_id=target_account.id)
 
 
 if __name__ == '__main__':

@@ -11,27 +11,33 @@
         <h1>YT Shorts Automation</h1>
         <nav>
             <a href="{{ url_for('index') }}">Home</a> |
+            <a href="{{ url_for('ideation') }}">Ideation</a> |
             <a href="{{ url_for('dashboard') }}">Dashboard</a>
         </nav>
     </header>
     <main>
         <div class="container">
-            <div class="auth-status">
-                {% if is_authenticated %}
-                    <p>Connected to YouTube. <a href="{{ url_for('logout') }}">Logout</a></p>
+            <div class="account-management">
+                <h2>Connected Accounts</h2>
+                {% if accounts %}
+                    <ul>
+                    {% for account in accounts %}
+                        <li>
+                            {{ account.name }}
+                            <form action="{{ url_for('delete_account', account_id=account.id) }}" method="post" style="display: inline;">
+                                <button type="submit" class="button-delete">Delete</button>
+                            </form>
+                        </li>
+                    {% endfor %}
+                    </ul>
                 {% else %}
-                    <a href="{{ url_for('authorize') }}" class="button">Connect to YouTube</a>
+                    <p>No accounts connected.</p>
                 {% endif %}
+                <a href="{{ url_for('authorize') }}" class="button">Add New Account</a>
             </div>
 
-            <h2>Fetch Videos</h2>
-            <form action="{{ url_for('fetch_videos_route') }}" method="post">
-                <input type="text" name="query" placeholder="Enter a search term (e.g., 'nature')">
-                <button type="submit">Fetch Videos</button>
-            </form>
-
             {% if videos %}
-            <h2>Downloaded Videos</h2>
+            <h2>Generated Videos</h2>
             <div class="video-grid">
                 {% for video in videos %}
                 <div class="video-item">
@@ -40,12 +46,10 @@
                         Your browser does not support the video tag.
                     </video>
                     <p>{{ video.filename }}</p>
-                    {% if is_authenticated %}
-                        {% if video.status == 'uploaded' %}
-                            <a href="https://www.youtube.com/watch?v={{ video.youtube_video_id }}" target="_blank" class="button-uploaded">View on YouTube</a>
-                        {% else %}
-                            <a href="{{ url_for('upload_form', filename=video.filename) }}" class="button">Post to YouTube</a>
-                        {% endif %}
+                    {% if video.status == 'uploaded' %}
+                        <a href="https://www.youtube.com/watch?v={{ video.youtube_video_id }}" target="_blank" class="button-uploaded">View on YouTube</a>
+                    {% else %}
+                        <a href="{{ url_for('upload_form', filename=video.filename) }}" class="button">Prepare for Upload</a>
                     {% endif %}
                 </div>
                 {% endfor %}

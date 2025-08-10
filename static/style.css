@@ -39,6 +39,34 @@ main {
     border-radius: 5px;
 }
 
+.button-delete {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    background-color: #dc3545;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.account-management {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 5px;
+    margin-bottom: 2rem;
+}
+
+.account-management ul {
+    list-style: none;
+    padding: 0;
+}
+
+.account-management li {
+    margin-bottom: 0.5rem;
+}
+
 .button-uploaded {
     display: inline-block;
     padding: 0.5rem 1rem;

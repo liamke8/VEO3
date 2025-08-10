@@ -10,12 +10,27 @@
     <header>
         <h1>Analytics Dashboard</h1>
         <nav>
-            <a href="{{ url_for('index') }}">Home</a>
+            <a href="{{ url_for('index') }}">Home</a> |
+            <a href="{{ url_for('ideation') }}">Ideation</a> |
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
         </nav>
     </header>
     <main>
         <div class="container">
             <h2>Video Performance</h2>
+
+            {% if accounts %}
+            <div class="account-selector">
+                <label for="account-switcher">Select Account:</label>
+                <select id="account-switcher" onchange="window.location.href=this.value;">
+                    {% for account in accounts %}
+                        <option value="{{ url_for('dashboard_for_account', account_id=account.id) }}" {% if account.id == current_account_id %}selected{% endif %}>
+                            {{ account.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
             {% if analytics_data %}
             <table>
                 <thead>
@@ -37,8 +52,13 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </table>
             {% else %}
-            <p>No analytics data to display. Have you uploaded any videos?</p>
+                <p>No analytics data to display for this account. Have you uploaded any videos with it?</p>
+            {% endif %}
+
+            {% else %}
+                <p>No accounts connected. Please add a YouTube account from the <a href="{{ url_for('index') }}">Home</a> page.</p>
             {% endif %}
         </div>
     </main>
