@@ -9,6 +9,10 @@
 <body>
     <header>
         <h1>YT Shorts Automation</h1>
+        <nav>
+            <a href="{{ url_for('index') }}">Home</a> |
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        </nav>
     </header>
     <main>
         <div class="container">
@@ -29,18 +33,18 @@
             {% if videos %}
             <h2>Downloaded Videos</h2>
             <div class="video-grid">
-                {% for video_filename in videos %}
+                {% for video in videos %}
                 <div class="video-item">
                     <video width="320" height="240" controls>
-                        <source src="{{ url_for('video_file', filename=video_filename) }}" type="video/mp4">
+                        <source src="{{ url_for('video_file', filename=video.filename) }}" type="video/mp4">
                         Your browser does not support the video tag.
                     </video>
-                    <p>{{ video_filename }}</p>
+                    <p>{{ video.filename }}</p>
                     {% if is_authenticated %}
-                        {% if video_filename in upload_status %}
-                            <a href="https://www.youtube.com/watch?v={{ upload_status[video_filename] }}" target="_blank" class="button-uploaded">View on YouTube</a>
+                        {% if video.status == 'uploaded' %}
+                            <a href="https://www.youtube.com/watch?v={{ video.youtube_video_id }}" target="_blank" class="button-uploaded">View on YouTube</a>
                         {% else %}
-                            <a href="{{ url_for('upload_form', filename=video_filename) }}" class="button">Post to YouTube</a>
+                            <a href="{{ url_for('upload_form', filename=video.filename) }}" class="button">Post to YouTube</a>
                         {% endif %}
                     {% endif %}
                 </div>

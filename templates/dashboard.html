@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Analytics Dashboard</h1>
+        <nav>
+            <a href="{{ url_for('index') }}">Home</a>
+        </nav>
+    </header>
+    <main>
+        <div class="container">
+            <h2>Video Performance</h2>
+            {% if analytics_data %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Video Title</th>
+                        <th>Views</th>
+                        <th>Likes</th>
+                        <th>Comments</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for video_id, data in analytics_data.items() %}
+                    <tr>
+                        <td>{{ data.title }}</td>
+                        <td>{{ data.views }}</td>
+                        <td>{{ data.likes }}</td>
+                        <td>{{ data.comments }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No analytics data to display. Have you uploaded any videos?</p>
+            {% endif %}
+        </div>
+    </main>
+    <footer>
+        <p>&copy; 2025 Your Company</p>
+    </footer>
+</body>
+</html>
